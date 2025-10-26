@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-nalgebra-glm = "0.18"
-minifb = "0.25"
-tobj = "4.0"
+raylib = "5.0"
+nalgebra = "0.32"
+rand = "0.8"
