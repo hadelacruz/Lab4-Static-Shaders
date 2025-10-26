@@ -1,0 +1,9 @@
+[package]
+name = "lab4"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+nalgebra-glm = "0.18"
+minifb = "0.25"
+tobj = "4.0"
