@@ -5,20 +5,6 @@
 
 ---
 
-## 📋 Tabla de Contenidos
-
-1. [Descripción del Proyecto](#-descripción-del-proyecto)
-2. [Capturas de Pantalla](#-capturas-de-pantalla)
-3. [Características Principales](#-características-principales)
-4. [Cómo Ejecutar el Programa](#-cómo-ejecutar-el-programa)
-5. [Controles](#-controles)
-6. [Arquitectura del Sistema](#-arquitectura-del-sistema)
-7. [Documentación Técnica](#-documentación-técnica)
-8. [Planetas Implementados](#-planetas-implementados)
-9. [Créditos](#-créditos)
-
----
-
 ## 🚀 Descripción del Proyecto
 
 Este proyecto implementa un sistema de renderizado de planetas procedurales usando **shaders personalizados** escritos completamente en Rust. Cada planeta se genera mediante algoritmos de ruido sin usar texturas pregrabadas.
@@ -28,6 +14,7 @@ Este proyecto implementa un sistema de renderizado de planetas procedurales usan
 - **Raylib 5.0** - Framework gráfico
 - **Renderizado por Software** - Pipeline completo sin GPU shaders
 - **Generación Procedural** - Algoritmos de ruido (Perlin, FBM, Voronoi, Ridge)
+- **5 Planetas Únicos** - Cada uno con efectos especiales diferentes
 
 ---
 
@@ -35,53 +22,73 @@ Este proyecto implementa un sistema de renderizado de planetas procedurales usan
 
 ### Planeta 1: Rocoso Gris con Relieve Procedural
 
-> **[ESPACIO PARA CAPTURA]**
-> 
-> *Presiona tecla **1** para ver este planeta*
+![Planeta Rocoso](src/img/planet1.png)
+
+*Presiona tecla **1** para ver este planeta*
 
 **Características:**
 - Deformación geométrica procedural (montañas, colinas, cráteres)
 - Paleta de 7 tonos de gris
 - Fracturas y vetas minerales
+- 5 capas de deformación en vertex shader
 
 ---
 
-### Planeta 2: Gigante Gaseoso
+### Planeta 2: Gigante Gaseoso (Júpiter)
 
-> **[ESPACIO PARA CAPTURA]**
-> 
-> *Presiona tecla **2** para ver este planeta*
+![Planeta Júpiter](src/img/planet2.png)
+
+*Presiona tecla **2** para ver este planeta*
 
 **Características:**
-- Bandas atmosféricas horizontales suaves
-- Gran Mancha Roja con rotación espiral
-- Turbulencia multicapa
+- 14 bandas atmosféricas horizontales con textura visible
+- Gran Mancha Roja con rotación espiral interna
+- Turbulencia multicapa (corrientes de chorro, remolinos, nubes finas)
+- Óvalos blancos (tormentas menores)
+- Colores variados: marrón oscuro → naranja → beige → crema → blanco
 
 ---
 
 ### Planeta 3: Sci-Fi Tecnológico
 
-> **[ESPACIO PARA CAPTURA]**
-> 
-> *Presiona tecla **3** para ver este planeta*
+![Planeta Sci-Fi](src/img/planet3.png)
+
+*Presiona tecla **3** para ver este planeta*
 
 **Características:**
 - Patrón hexagonal de circuitos
 - Líneas de escaneo animadas
 - Glitches aleatorios y pulsos de energía
+- Paleta cibernética (azul, cian, púrpura, rosa neón)
 
 ---
 
 ### Planeta 4: Nebulosa Cósmica
 
-> **[ESPACIO PARA CAPTURA]**
-> 
-> *Presiona tecla **4** para ver este planeta*
+![Planeta Nebulosa](src/img/planet4.png)
+
+*Presiona tecla **4** para ver este planeta*
 
 **Características:**
 - Ondas de choque expansivas
 - Vórtices energéticos
 - Paleta cósmica (púrpura, magenta, naranja, cian)
+- Auto-iluminación (emisivo puro)
+
+---
+
+### Planeta 5: Metálico con Picos
+
+![Planeta Metálico](src/img/planet5.png)
+
+*Presiona tecla **5** para ver este planeta*
+
+**Características:**
+- Picos/púas procedurales por toda la superficie (prickles)
+- Apariencia metálica cromada (plata, acero, cromado)
+- 5 capas de deformación en vertex shader (Voronoi)
+- Iluminación especular intensa
+- Reflexiones metálicas realistas
 
 ---
 
@@ -89,10 +96,11 @@ Este proyecto implementa un sistema de renderizado de planetas procedurales usan
 
 - ✅ **Vertex Shaders** - Deformación procedural de geometría
 - ✅ **Fragment Shaders** - Coloreado y texturizado por píxel
-- ✅ **4 Planetas Únicos** - Cada uno con efectos especiales diferentes
-- ✅ **Fondo Espacial** - Galaxia con estrellas animadas
-- ✅ **Iluminación Realista** - Difusa, especular, rim lighting
+- ✅ **5 Planetas Únicos** - Cada uno con efectos especiales diferentes
+- ✅ **Fondo Espacial** - Galaxia con estrellas animadas y nebulosas
+- ✅ **Iluminación Realista** - Difusa, especular, rim lighting, fresnel
 - ✅ **100% Procedural** - Sin texturas pregrabadas
+- ✅ **Generación de Geometría** - Picos y deformaciones en tiempo real
 
 ---
 
@@ -116,9 +124,6 @@ cargo build --release
 # Ejecutar
 cargo run --release
 ```
-
-**⚠️ Importante:** Siempre usar `--release` para mejor rendimiento.
-
 ---
 
 ## 🎮 Controles
@@ -126,9 +131,10 @@ cargo run --release
 | Tecla | Acción |
 |-------|--------|
 | **1** | Ver Planeta Rocoso |
-| **2** | Ver Gigante Gaseoso |
+| **2** | Ver Gigante Gaseoso (Júpiter) |
 | **3** | Ver Planeta Sci-Fi |
 | **4** | Ver Planeta Nebulosa |
+| **5** | Ver Planeta Metálico |
 | **ESC** | Salir |
 
 ---
@@ -290,11 +296,17 @@ let color = if value < 0.5 {
 ### 2️⃣ Gigante Gaseoso (`GasGiantShader`)
 
 **Fragment Shader:**
-- **Bandas:** 8 frecuencia, transiciones suaves
-- **Turbulencia:** 4 capas (escalas 5, 8, 12, 20)
-- **Vórtice:** Gran Mancha Roja con rotación espiral
-- **Paleta:** 8 tonos (marrón → naranja → crema)
-- **Iluminación:** Wrap diffuse (0.3/0.7) + Subsurface + Rim
+- **Bandas:** 14 horizontales con textura visible (alternancia oscuro/claro)
+- **Turbulencia:** 3 capas con 5 octavas 
+- **Gran Mancha Roja:** Tormenta elíptica con rotación espiral interna animada
+- **Óvalos Blancos:** 2 tormentas menores
+- **Paleta:** 9 tonos contrastados
+- **Iluminación:** Difusa + Ambiente alto (0.4)
+
+**Parámetros clave:**
+- Frecuencia de bandas: 14
+- Escalas de turbulencia: 12, 8, 25
+- Tamaño Gran Mancha: 0.15 unidades (elipse 2.5x horizontal)
 
 ---
 
@@ -319,3 +331,65 @@ let color = if value < 0.5 {
 - **Efectos:** Vórtices energéticos, partículas de estrellas
 - **Paleta:** Púrpura, magenta, naranja, cian
 - **Iluminación:** Auto-iluminación 0.6 (emisivo puro)
+
+---
+
+### 5️⃣ Planeta Metálico con Picos (`SaturnShader`)
+
+**Vertex Shader - 5 Capas de Deformación Procedural:**
+
+1. **Picos Grandes** (Voronoi escala 15):
+   - Distribución: Centros de células Voronoi (`pattern < 0.15`)
+   - Altura: 0.35 unidades
+   - Transición: smoothstep(0.15, 0.05)
+
+2. **Picos Medianos** (Voronoi escala 25):
+   - Distribución: Células más densas (`pattern < 0.12`)
+   - Altura: 0.25 unidades
+   - Transición: smoothstep(0.12, 0.04)
+
+3. **Picos Pequeños** (Voronoi escala 40):
+   - Distribución: Muy densa (`pattern < 0.1`)
+   - Altura: 0.15 unidades
+   - **Animación:** Desplazamiento temporal en X
+   - Transición: smoothstep(0.1, 0.03)
+
+**Fragment Shader - Apariencia Metálica:**
+
+**Paleta (6 tonos):**
+- Metal oscuro (40,45,50) → Acero (80,90,100) → Plata oscura (140,150,160)
+- Plata brillante (200,210,220) → Cromado (240,245,250)
+- Acento oxidado (120,80,60)
+
+**Parámetros clave:**
+- Total de picos: ~3 capas superpuestas
+- Rango de desplazamiento: 0-0.35 unidades
+- Intensidad especular: hasta 2.0x
+- Ambiente: 0.2 (metales oscuros en sombra)
+
+---
+
+## 🛠️ Detalles de Implementación
+
+
+### Optimizaciones de Rendimiento
+
+1. **Precálculo de normales:** Solo cuando hay deformación significativa
+2. **Culling temprano:** Triángulos fuera de pantalla se descartan
+3. **Clamp de valores:** Evita NaN/Infinity en release mode
+4. **Interpolación eficiente:** smoothstep en lugar de múltiples if/else
+
+---
+
+## 📊 Estadísticas del Proyecto
+
+- **Líneas de código:** ~1,200 (shaders.rs)
+- **Planetas:** 5 únicos
+- **Funciones de ruido:** 7 tipos diferentes
+- **Capas de deformación:** Hasta 5 por planeta
+- **Triángulos por esfera:** 960
+- **Vértices por esfera:** 1,890
+- **FPS objetivo:** 60
+- **Resolución:** 1024x768
+
+---

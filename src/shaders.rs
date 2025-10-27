@@ -378,8 +378,8 @@ impl PlanetShader for RockyPlanetShader {
 }
 
 // ============================================================================
-// PLANETA 2: GIGANTE GASEOSO SUAVE Y FLUIDO
-// Características: Bandas atmosféricas suaves, transiciones graduales, apariencia gaseosa
+// PLANETA 2: GIGANTE GASEOSO ESTILO JÚPITER
+// Características: Bandas horizontales con MUCHA TEXTURA y colores variados
 // ============================================================================
 pub struct GasGiantShader;
 
@@ -388,152 +388,105 @@ impl PlanetShader for GasGiantShader {
         (position, normal)
     }
 
-    fn fragment_shader(&self, position: Vector3, normal: Vector3, uv: (f32, f32), uniforms: &ShaderUniforms) -> ShaderColor {
-        // === PALETA DE COLORES GASEOSOS (MÁS SUAVES) ===
-        let gas_dark_1 = ShaderColor::from_rgb(70, 45, 25);        // Marrón oscuro gaseoso
-        let gas_dark_2 = ShaderColor::from_rgb(95, 60, 30);        // Marrón medio-oscuro
-        let gas_medium_1 = ShaderColor::from_rgb(140, 90, 50);     // Naranja terroso
-        let gas_medium_2 = ShaderColor::from_rgb(170, 115, 65);    // Naranja cálido
-        let gas_light_1 = ShaderColor::from_rgb(210, 160, 100);    // Crema anaranjado
-        let gas_light_2 = ShaderColor::from_rgb(235, 200, 140);    // Crema claro
-        let gas_bright = ShaderColor::from_rgb(250, 235, 190);     // Casi blanco cremoso
-        let storm_red = ShaderColor::from_rgb(160, 60, 45);        // Rojo tormenta
+    fn fragment_shader(&self, _position: Vector3, normal: Vector3, uv: (f32, f32), uniforms: &ShaderUniforms) -> ShaderColor {
+        // === PALETA DE JÚPITER - MUY CONTRASTADA ===
+        let very_dark = ShaderColor::from_rgb(60, 35, 15);         // Casi negro
+        let dark_brown = ShaderColor::from_rgb(110, 65, 25);       // Marrón oscuro
+        let rust_brown = ShaderColor::from_rgb(150, 85, 35);       // Óxido
+        let orange = ShaderColor::from_rgb(200, 120, 50);          // Naranja
+        let tan = ShaderColor::from_rgb(210, 150, 90);             // Bronceado
+        let beige = ShaderColor::from_rgb(230, 190, 130);          // Beige
+        let cream = ShaderColor::from_rgb(245, 220, 170);          // Crema
+        let white = ShaderColor::from_rgb(255, 250, 230);          // Blanco
+        let red_spot = ShaderColor::from_rgb(200, 60, 30);         // Rojo intenso
         
-        // === COORDENADAS Y ANIMACIÓN ===
-        let latitude = uv.1; // Coordenada vertical (0 a 1)
-        let band_frequency = 8.0; // Frecuencia de bandas (menos que antes para más suavidad)
+        let latitude = uv.1;
+        let animated_longitude = uv.0 + uniforms.time * 0.015;
         
-        // Rotación diferencial suave
-        let band_speed = (latitude * 8.0).sin() * 0.015 + 0.01;
-        let animated_longitude = uv.0 + uniforms.time * band_speed;
+        // === BANDAS BASE CON TEXTURA ===
+        // Sistema de bandas alternadas (14 bandas como Júpiter real)
+        let band_pos = latitude * 14.0;
+        let band_index = band_pos.floor() as i32 % 8;
+        let band_fract = band_pos.fract();
         
-        // === CAPA 1: BANDAS BASE SUAVES ===
-        let band_base = (latitude * band_frequency).sin();
-        
-        // === CAPA 2: TURBULENCIA ATMOSFÉRICA MULTICAPA (MÁS SUAVE) ===
-        let turbulence1 = fbm(
-            animated_longitude * 5.0,
-            latitude * 4.0,
+        // TURBULENCIA HORIZONTAL FUERTE (corrientes de chorro)
+        let jet_stream = fbm(
+            animated_longitude * 12.0,
+            latitude * 5.0,
             5
-        ) * 0.4;
+        ) * 0.25; // Más turbulencia
         
-        let turbulence2 = fbm(
-            animated_longitude * 8.0 + uniforms.time * 0.02,
-            latitude * 6.0,
-            4
-        ) * 0.3;
-        
-        let turbulence3 = fbm(
-            animated_longitude * 12.0 - uniforms.time * 0.015,
-            latitude * 10.0,
-            3
-        ) * 0.2;
-        
-        // Turbulencia suave de alta frecuencia
-        let fine_turbulence = fbm(
-            animated_longitude * 20.0 + uniforms.time * 0.03,
-            latitude * 15.0,
-            3
-        ) * 0.1;
-        
-        // Combinar todas las turbulencias
-        let combined_turbulence = turbulence1 + turbulence2 + turbulence3 + fine_turbulence;
-        
-        // === CAPA 3: FLUJO HORIZONTAL (Corrientes de chorro suaves) ===
-        let jet_flow = fbm(
-            animated_longitude * 15.0 + uniforms.time * 0.08,
-            latitude * 3.0,
+        // Remolinos y vórtices a lo largo de las bandas
+        let vortices = fbm(
+            animated_longitude * 8.0 + latitude * 20.0,
+            latitude * 8.0,
             4
         ) * 0.15;
         
-        // === CONSTRUCCIÓN DEL VALOR DE BANDA FINAL (MUY SUAVE) ===
-        let distorted_band = band_base + combined_turbulence + jet_flow;
+        // Textura fina (nubes pequeñas)
+        let fine_texture = fbm(
+            animated_longitude * 25.0,
+            latitude * 20.0,
+            3
+        ) * 0.08;
         
-        // === SELECCIÓN DE COLOR CON TRANSICIONES MUY SUAVES ===
-        // Normalizar el valor de banda para mejor distribución
-        let normalized_band = (distorted_band + 1.5) / 3.0; // Rango aproximado 0-1
+        // Combinar todas las texturas
+        let texture_value = jet_stream + vortices + fine_texture;
+        let final_band = (band_fract + texture_value).clamp(0.0, 1.0);
         
-        let base_color = if normalized_band > 0.85 {
-            mix_color(gas_bright, gas_light_2, smoothstep(0.85, 1.0, normalized_band))
-        } else if normalized_band > 0.7 {
-            mix_color(gas_light_2, gas_bright, smoothstep(0.7, 0.85, normalized_band))
-        } else if normalized_band > 0.55 {
-            mix_color(gas_light_1, gas_light_2, smoothstep(0.55, 0.7, normalized_band))
-        } else if normalized_band > 0.4 {
-            mix_color(gas_medium_2, gas_light_1, smoothstep(0.4, 0.55, normalized_band))
-        } else if normalized_band > 0.25 {
-            mix_color(gas_medium_1, gas_medium_2, smoothstep(0.25, 0.4, normalized_band))
-        } else if normalized_band > 0.15 {
-            mix_color(gas_dark_2, gas_medium_1, smoothstep(0.15, 0.25, normalized_band))
-        } else {
-            mix_color(gas_dark_1, gas_dark_2, smoothstep(0.0, 0.15, normalized_band))
+        // === COLORES POR BANDA (Alternando oscuro/claro) ===
+        let base_color = match band_index {
+            0 => mix_color(very_dark, dark_brown, final_band),
+            1 => mix_color(tan, beige, final_band),
+            2 => mix_color(dark_brown, rust_brown, final_band),
+            3 => mix_color(cream, white, final_band),
+            4 => mix_color(rust_brown, orange, final_band),
+            5 => mix_color(beige, cream, final_band),
+            6 => mix_color(orange, tan, final_band),
+            _ => mix_color(white, cream, final_band),
         };
-        
-        // === CAPA 4: REMOLINOS Y VÓRTICES SUAVES ===
-        let vortex_x = 0.35 + (uniforms.time * 0.008).sin() * 0.04;
-        let vortex_y = 0.65;
-        let dist_to_vortex = ((animated_longitude - vortex_x).powi(2) + (latitude - vortex_y).powi(2)).sqrt();
-        
-        // Vórtice con gradiente muy suave
-        let vortex_influence = smoothstep(0.15, 0.0, dist_to_vortex);
         
         let mut final_color = base_color;
         
-        if vortex_influence > 0.05 {
-            // Patrón de rotación del vórtice
-            let angle = (animated_longitude - vortex_x).atan2(latitude - vortex_y);
-            let rotation_pattern = (angle * 3.0 + uniforms.time * 1.5 - dist_to_vortex * 8.0).sin() * 0.5 + 0.5;
-            
-            let vortex_color = mix_color(storm_red, gas_medium_2, rotation_pattern);
-            final_color = mix_color(final_color, vortex_color, vortex_influence * 0.8);
+        // === GRAN MANCHA ROJA (más grande y visible) ===
+        let storm_x = 0.3;
+        let storm_y = 0.4;
+        let dx = (animated_longitude - storm_x) * 2.5; // Elipse horizontal
+        let dy = latitude - storm_y;
+        let dist_storm = (dx * dx + dy * dy).sqrt();
+        
+        if dist_storm < 0.15 {
+            let strength = smoothstep(0.15, 0.06, dist_storm);
+            // Rotación interna del remolino
+            let angle = dy.atan2(dx);
+            let spiral = (angle * 3.0 - dist_storm * 10.0 + uniforms.time * 0.5).sin() * 0.5 + 0.5;
+            let storm_color = mix_color(red_spot, orange, spiral);
+            final_color = mix_color(final_color, storm_color, strength * 0.9);
         }
         
-        // === CAPA 5: NUBES DE ALTA ALTITUD (MUY SUAVES) ===
-        let high_clouds = fbm(
-            animated_longitude * 10.0 + uniforms.time * 0.05,
-            latitude * 8.0,
-            3
-        );
-        
-        if high_clouds > 0.6 {
-            let cloud_intensity = smoothstep(0.6, 0.75, high_clouds) * 0.3;
-            final_color = mix_color(final_color, gas_bright, cloud_intensity);
-        }
-        if high_clouds > 0.6 {
-            let cloud_intensity = smoothstep(0.6, 0.75, high_clouds) * 0.3;
-            final_color = mix_color(final_color, gas_bright, cloud_intensity);
+        // === ÓVALOS BLANCOS (tormentas menores) ===
+        let oval1_dist = ((animated_longitude - 0.6).powi(2) * 4.0 + (latitude - 0.55).powi(2)).sqrt();
+        if oval1_dist < 0.05 {
+            let oval_str = smoothstep(0.05, 0.02, oval1_dist);
+            final_color = mix_color(final_color, white, oval_str * 0.8);
         }
         
-        // === ILUMINACIÓN ATMOSFÉRICA SUAVE ===
+        let oval2_dist = ((animated_longitude - 0.75).powi(2) * 5.0 + (latitude - 0.32).powi(2)).sqrt();
+        if oval2_dist < 0.04 {
+            let oval_str = smoothstep(0.04, 0.015, oval2_dist);
+            final_color = mix_color(final_color, cream, oval_str * 0.7);
+        }
+        
+        // === ILUMINACIÓN ===
         let light_dir = uniforms.light_direction.normalize();
-        let view_dir = (uniforms.camera_position - position).normalize();
-        
-        // Difusa envolvente (atmósfera muy densa y difusa)
-        let wrap_diffuse = (normal.dot(&light_dir) * 0.3 + 0.7).max(0.0);
-        
-        // Subsurface scattering simulado (luz que atraviesa la atmósfera)
-        let subsurface = (1.0 + normal.dot(&light_dir)) * 0.25;
-        
-        // Rim lighting muy suave
-        let rim = (1.0 - view_dir.dot(&normal).abs()).powf(3.0) * 0.4;
-        
-        // Auto-iluminación del vórtice
-        let self_illumination = vortex_influence * 0.15;
-        
-        let ambient = 0.4; // Ambiente más alto para efecto gaseoso
-        let lighting_intensity = (ambient + wrap_diffuse * 0.45 + subsurface + rim + self_illumination).min(1.5);
-        
-        let lit_color = ShaderColor::new(
-            final_color.r * lighting_intensity,
-            final_color.g * lighting_intensity,
-            final_color.b * lighting_intensity,
-            1.0,
-        );
+        let diffuse = normal.dot(&light_dir).max(0.0);
+        let ambient = 0.4;
+        let lighting = (ambient + diffuse * 0.6).min(1.0);
         
         ShaderColor::new(
-            lit_color.r.clamp(0.0, 1.0),
-            lit_color.g.clamp(0.0, 1.0),
-            lit_color.b.clamp(0.0, 1.0),
+            (final_color.r * lighting).clamp(0.0, 1.0),
+            (final_color.g * lighting).clamp(0.0, 1.0),
+            (final_color.b * lighting).clamp(0.0, 1.0),
             1.0,
         )
     }
@@ -946,3 +899,172 @@ impl PlanetShader for LavaPlanetShader {
     }
 }
 
+// ============================================================================
+// PLANETA 5: PLANETA METÁLICO CON PICOS/PÚAS
+// Características: Superficie con prickles/picos generados en VERTEX SHADER
+// ============================================================================
+pub struct SaturnShader;
+
+impl PlanetShader for SaturnShader {
+    fn vertex_shader(&self, position: Vector3, normal: Vector3, uv: (f32, f32), uniforms: &ShaderUniforms) -> (Vector3, Vector3) {
+        // === GENERAR PICOS/PÚAS PROCEDURALMENTE ===
+        
+        // CAPA 1: Picos grandes principales (usando Voronoi para distribución)
+        let voronoi_scale = 15.0;
+        let voronoi_pattern = voronoi_noise(
+            position.x * voronoi_scale + position.z * voronoi_scale,
+            position.y * voronoi_scale
+        );
+        
+        // Los picos se generan donde el Voronoi es pequeño (centros de células)
+        let spike_large = if voronoi_pattern < 0.15 {
+            smoothstep(0.15, 0.05, voronoi_pattern) * 0.35 // Picos grandes
+        } else {
+            0.0
+        };
+        
+        // CAPA 2: Picos medianos (más densidad)
+        let voronoi_medium = voronoi_noise(
+            position.x * 25.0 + position.z * 25.0,
+            position.y * 25.0
+        );
+        
+        let spike_medium = if voronoi_medium < 0.12 {
+            smoothstep(0.12, 0.04, voronoi_medium) * 0.25
+        } else {
+            0.0
+        };
+        
+        // CAPA 3: Picos pequeños (muy densos, como púas)
+        let voronoi_small = voronoi_noise(
+            position.x * 40.0 + uniforms.time * 0.1 + position.z * 40.0,
+            position.y * 40.0
+        );
+        
+        let spike_small = if voronoi_small < 0.1 {
+            smoothstep(0.1, 0.03, voronoi_small) * 0.15
+        } else {
+            0.0
+        };
+        
+        // CAPA 4: Rugosidad base (textura áspera metálica)
+        let roughness = fbm3d(
+            position.x * 50.0,
+            position.y * 50.0,
+            position.z * 50.0,
+            4
+        ) * 0.05;
+        
+        // CAPA 5: Deformación animada (pulsación metálica)
+        let pulse = (uniforms.time * 2.0 + position.length() * 5.0).sin() * 0.02;
+        
+        // Combinar todas las capas de picos
+        let total_displacement = spike_large + spike_medium + spike_small + roughness + pulse;
+        
+        // Desplazar el vértice a lo largo de la normal (hacia afuera)
+        let displaced_position = position + normal * total_displacement;
+        
+        // Recalcular la normal basada en los picos
+        // (aproximación: la normal apunta más hacia afuera donde hay picos)
+        let spike_factor = spike_large * 2.0 + spike_medium * 1.5 + spike_small;
+        let adjusted_normal = (normal + normal * spike_factor).normalize();
+        
+        (displaced_position, adjusted_normal)
+    }
+
+    fn fragment_shader(&self, position: Vector3, normal: Vector3, uv: (f32, f32), uniforms: &ShaderUniforms) -> ShaderColor {
+        // === PALETA METÁLICA ===
+        let dark_metal = ShaderColor::from_rgb(40, 45, 50);        // Metal oscuro
+        let medium_metal = ShaderColor::from_rgb(80, 90, 100);     // Acero
+        let light_metal = ShaderColor::from_rgb(140, 150, 160);    // Plata oscura
+        let bright_metal = ShaderColor::from_rgb(200, 210, 220);   // Plata brillante
+        let chrome = ShaderColor::from_rgb(240, 245, 250);         // Cromado
+        let rust_accent = ShaderColor::from_rgb(120, 80, 60);      // Acento oxidado
+        
+        // === TEXTURA METÁLICA PROCEDURAL ===
+        
+        // Patrón Voronoi para variación metálica
+        let metal_pattern = voronoi_noise(
+            position.x * 20.0 + position.z * 20.0,
+            position.y * 20.0
+        );
+        
+        // Ruido para imperfecciones metálicas
+        let imperfections = fbm3d(
+            position.x * 30.0,
+            position.y * 30.0,
+            position.z * 30.0,
+            4
+        );
+        
+        // Rayones y arañazos (scratch pattern)
+        let scratches = fbm(
+            uv.0 * 100.0,
+            uv.1 * 100.0,
+            3
+        );
+        
+        // Combinar para obtener color base metálico
+        let metal_value = (metal_pattern + imperfections * 0.5 + scratches * 0.3 + 1.5) / 3.0;
+        
+        let base_color = if metal_value > 0.8 {
+            mix_color(chrome, bright_metal, (1.0 - metal_value) * 5.0)
+        } else if metal_value > 0.6 {
+            mix_color(bright_metal, light_metal, (0.8 - metal_value) * 5.0)
+        } else if metal_value > 0.4 {
+            mix_color(light_metal, medium_metal, (0.6 - metal_value) * 5.0)
+        } else if metal_value > 0.2 {
+            mix_color(medium_metal, dark_metal, (0.4 - metal_value) * 5.0)
+        } else {
+            mix_color(dark_metal, rust_accent, metal_value * 5.0)
+        };
+        
+        // === ILUMINACIÓN METÁLICA ===
+        let light_dir = uniforms.light_direction.normalize();
+        let view_dir = (uniforms.camera_position - position).normalize();
+        
+        // Difusa (metales reflejan poco difusamente)
+        let diffuse = normal.dot(&light_dir).max(0.0) * 0.3;
+        
+        // Especular FUERTE (metales son muy especulares)
+        let reflect_dir = normal * (2.0 * normal.dot(&light_dir)) - light_dir;
+        let specular = view_dir.dot(&reflect_dir).max(0.0).powf(32.0) * 1.2; // Exponente alto para brillo concentrado
+        
+        // Especular secundario (reflexión más amplia)
+        let specular_broad = view_dir.dot(&reflect_dir).max(0.0).powf(8.0) * 0.5;
+        
+        // Fresnel effect (bordes más brillantes)
+        let fresnel = (1.0 - view_dir.dot(&normal).abs()).powf(3.0) * 0.4;
+        
+        // Ambiente metálico
+        let ambient = 0.2;
+        
+        // Oclusión ambiental en los valles entre picos
+        let ao = (1.0 - imperfections.abs() * 0.3).max(0.5);
+        
+        // Combinar iluminación
+        let lighting_intensity = (ambient * ao + diffuse + specular + specular_broad + fresnel).min(2.0);
+        
+        let lit_color = ShaderColor::new(
+            base_color.r * lighting_intensity,
+            base_color.g * lighting_intensity,
+            base_color.b * lighting_intensity,
+            1.0,
+        );
+        
+        // Añadir highlight especular adicional (brillo puro)
+        let final_color = if specular > 0.8 {
+            let highlight_amount = (specular - 0.8) * 5.0;
+            mix_color(lit_color, chrome, highlight_amount.min(0.5))
+        } else {
+            lit_color
+        };
+        
+        ShaderColor::new(
+            final_color.r.clamp(0.0, 1.0),
+            final_color.g.clamp(0.0, 1.0),
+            final_color.b.clamp(0.0, 1.0),
+            1.0,
+        )
+    }
+}

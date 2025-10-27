@@ -8,13 +8,14 @@ use raylib::prelude::*;
 use vector::Vector3;
 use camera::Camera;
 use sphere::Mesh;
-use shaders::{PlanetShader, RockyPlanetShader, GasGiantShader, CrystalPlanetShader, LavaPlanetShader, ShaderUniforms, ShaderColor};
+use shaders::{PlanetShader, RockyPlanetShader, GasGiantShader, CrystalPlanetShader, LavaPlanetShader, SaturnShader, ShaderUniforms, ShaderColor};
 
 enum PlanetType {
     Rocky,
     GasGiant,
     Crystal,
     Nebula,
+    Saturn,
 }
 
 struct Planet {
@@ -35,6 +36,7 @@ impl Planet {
             PlanetType::GasGiant => (Box::new(GasGiantShader), 0.8),
             PlanetType::Crystal => (Box::new(CrystalPlanetShader), 1.2),
             PlanetType::Nebula => (Box::new(LavaPlanetShader), 1.5),
+            PlanetType::Saturn => (Box::new(SaturnShader), 0.6),
         };
         
         Planet {
@@ -212,7 +214,7 @@ fn render_galaxy_background(d: &mut RaylibDrawHandle, width: i32, height: i32, t
 fn main() {
     let (mut rl, thread) = raylib::init()
         .size(1024, 768)
-        .title("Laboratorio de Planetas - Shaders")
+        .title("Laboratorio No. 4 - Shaders")
         .build();
 
     let mut camera = Camera::new();
@@ -221,6 +223,7 @@ fn main() {
         Planet::new(PlanetType::GasGiant),
         Planet::new(PlanetType::Crystal),
         Planet::new(PlanetType::Nebula),
+        Planet::new(PlanetType::Saturn),
     ];
     
     let mut current_planet = 0;
@@ -244,6 +247,8 @@ fn main() {
             current_planet = 2;
         } else if rl.is_key_pressed(KeyboardKey::KEY_FOUR) {
             current_planet = 3;
+        } else if rl.is_key_pressed(KeyboardKey::KEY_FIVE) {
+            current_planet = 4;
         }
         
         // Actualizar planeta actual
@@ -277,7 +282,9 @@ fn main() {
         d.draw_text("2 - Gigante Gaseoso", 10, 80, 14, raylib::prelude::Color::WHITE);
         d.draw_text("3 - Planeta de Ficción", 10, 100, 14, raylib::prelude::Color::WHITE);
         d.draw_text("4 - Planeta Nebulosa", 10, 120, 14, raylib::prelude::Color::WHITE);
-        let planet_names = ["Planeta Rocoso", "Gigante Gaseoso", "Planeta de Ficción", "Planeta Nebulosa"];
+        d.draw_text("5 - Planeta Metalico", 10, 140, 14, raylib::prelude::Color::WHITE);
+        d.draw_text("Puedes hacer zoom y mover la cámara con el mouse o touchpad", 10, 160, 14, raylib::prelude::Color::WHITE);
+        let planet_names = ["Planeta Rocoso", "Gigante Gaseoso", "Planeta Sci-Fi", "Planeta Nebulosa", "Planeta Metalico"];
         d.draw_text(
             &format!("Planeta actual: {}", planet_names[current_planet]),
             10,
