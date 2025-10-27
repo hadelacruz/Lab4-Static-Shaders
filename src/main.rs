@@ -9,7 +9,6 @@ use vector::Vector3;
 use camera::Camera;
 use sphere::Mesh;
 use shaders::{PlanetShader, RockyPlanetShader, GasGiantShader, CrystalPlanetShader, LavaPlanetShader, ShaderUniforms, ShaderColor};
-use std::f32::consts::PI;
 
 enum PlanetType {
     Rocky,
@@ -95,6 +94,11 @@ fn render_planet_software(
         let norm2 = rotation_matrix.transform_vector(&v2.normal);
         let norm3 = rotation_matrix.transform_vector(&v3.normal);
         
+        // Aplicar VERTEX SHADER para deformación procedural
+        let (pos1, norm1) = planet.shader.vertex_shader(pos1, norm1, v1.uv, uniforms);
+        let (pos2, norm2) = planet.shader.vertex_shader(pos2, norm2, v2.uv, uniforms);
+        let (pos3, norm3) = planet.shader.vertex_shader(pos3, norm3, v3.uv, uniforms);
+        
         // Transformar a espacio de pantalla
         let screen1 = viewport_matrix.transform_vector(&proj_matrix.transform_vector(&view_matrix.transform_vector(&pos1)));
         let screen2 = viewport_matrix.transform_vector(&proj_matrix.transform_vector(&view_matrix.transform_vector(&pos2)));
@@ -125,6 +129,83 @@ fn render_planet_software(
                 avg_color.to_raylib_color(),
             );
         }
+    }
+}
+
+fn render_galaxy_background(d: &mut RaylibDrawHandle, width: i32, height: i32, time: f32) {
+    // Fondo base con gradiente de galaxia (azul-púrpura oscuro)
+    let top_color = raylib::prelude::Color::new(5, 5, 20, 255);      // Azul muy oscuro
+    let bottom_color = raylib::prelude::Color::new(15, 5, 25, 255);  // Púrpura muy oscuro
+    
+    // Dibujar gradiente vertical
+    for y in 0..height {
+        let t = y as f32 / height as f32;
+        let r = ((1.0 - t) * top_color.r as f32 + t * bottom_color.r as f32) as u8;
+        let g = ((1.0 - t) * top_color.g as f32 + t * bottom_color.g as f32) as u8;
+        let b = ((1.0 - t) * top_color.b as f32 + t * bottom_color.b as f32) as u8;
+        
+        d.draw_line(0, y, width, y, raylib::prelude::Color::new(r, g, b, 255));
+    }
+    
+    // Función de ruido simple para estrellas
+    let hash = |x: i32, y: i32| -> f32 {
+        let n = x.wrapping_add(y.wrapping_mul(374761393));
+        let n = (n << 13) ^ n;
+        let nn = n.wrapping_mul(n.wrapping_mul(n.wrapping_mul(15731).wrapping_add(789221)).wrapping_add(1376312589));
+        ((nn & 0x7fffffff) as f32 / 1073741824.0).abs()
+    };
+    
+    // Dibujar estrellas como puntos blancos
+    let star_density = 0.0008; // Densidad de estrellas
+    let total_stars = (width * height) as f32 * star_density;
+    
+    for i in 0..(total_stars as i32) {
+        let seed_x = i * 73856093;
+        let seed_y = i * 19349663;
+        
+        let star_x = (hash(seed_x, 0) * width as f32) as i32;
+        let star_y = (hash(seed_y, 1) * height as f32) as i32;
+        
+        // Variación en brillo de estrellas
+        let brightness = hash(seed_x, seed_y);
+        
+        if brightness > 0.3 {
+            let intensity = ((brightness - 0.3) / 0.7 * 255.0) as u8;
+            
+            // Algunas estrellas parpadean
+            let twinkle = ((time * 2.0 + i as f32 * 0.1).sin() * 0.3 + 0.7).max(0.0).min(1.0);
+            let final_intensity = (intensity as f32 * twinkle) as u8;
+            
+            // Tamaño de estrella basado en brillo
+            if brightness > 0.95 {
+                // Estrellas grandes y brillantes
+                d.draw_circle(star_x, star_y, 2.0, raylib::prelude::Color::new(255, 255, 255, final_intensity));
+                d.draw_circle(star_x, star_y, 1.0, raylib::prelude::Color::new(255, 255, 255, 255));
+            } else if brightness > 0.85 {
+                // Estrellas medianas
+                d.draw_pixel(star_x, star_y, raylib::prelude::Color::new(255, 255, 255, 255));
+                d.draw_pixel(star_x + 1, star_y, raylib::prelude::Color::new(255, 255, 255, final_intensity / 2));
+                d.draw_pixel(star_x, star_y + 1, raylib::prelude::Color::new(255, 255, 255, final_intensity / 2));
+            } else {
+                // Estrellas pequeñas
+                d.draw_pixel(star_x, star_y, raylib::prelude::Color::new(255, 255, 255, final_intensity));
+            }
+        }
+    }
+    
+    // Nebulosa sutil de fondo
+    for i in 0..30 {
+        let nebula_x = (hash(i * 123, 456) * width as f32) as i32;
+        let nebula_y = (hash(i * 789, 321) * height as f32) as i32;
+        let nebula_size = (hash(i * 555, 999) * 150.0 + 50.0) as f32;
+        
+        let nebula_color = if hash(i * 111, 222) > 0.5 {
+            raylib::prelude::Color::new(20, 10, 40, 15)  // Púrpura
+        } else {
+            raylib::prelude::Color::new(10, 15, 35, 15)  // Azul
+        };
+        
+        d.draw_circle(nebula_x, nebula_y, nebula_size, nebula_color);
     }
 }
 
@@ -176,7 +257,9 @@ fn main() {
         };
         
         let mut d = rl.begin_drawing(&thread);
-        d.clear_background(raylib::prelude::Color::BLACK);
+        
+        // Renderizar fondo de galaxia
+        render_galaxy_background(&mut d, 1024, 768, time);
         
         // Renderizar usando nuestro software renderer
         render_planet_software(

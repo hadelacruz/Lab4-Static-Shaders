@@ -1,5 +1,4 @@
 use crate::vector::Vector3;
-use crate::sphere::Vertex;
 
 #[derive(Debug, Clone, Copy)]
 pub struct ShaderColor {
@@ -181,141 +180,193 @@ fn mix_color(a: ShaderColor, b: ShaderColor, t: f32) -> ShaderColor {
 }
 
 // ============================================================================
-// PLANETA 1: PLANETA ROCOSO GEOLÓGICO AVANZADO
-// Características: Múltiples capas geológicas, cráteres, atmósfera, océanos
+// PLANETA 1: PLANETA ROCOSO CON DEFORMACIÓN PROCEDURAL (VERTEX SHADER)
+// Características: Deformación geométrica procedural, terreno con relieve, colores grises
 // ============================================================================
 pub struct RockyPlanetShader;
 
 impl PlanetShader for RockyPlanetShader {
-    fn vertex_shader(&self, position: Vector3, normal: Vector3, _uv: (f32, f32), _uniforms: &ShaderUniforms) -> (Vector3, Vector3) {
-        (position, normal)
-    }
-
-    fn fragment_shader(&self, position: Vector3, normal: Vector3, uv: (f32, f32), uniforms: &ShaderUniforms) -> ShaderColor {
-        // === PALETA DE COLORES EXTENDIDA ===
-        let ocean_deep = ShaderColor::from_rgb(10, 30, 80);        // Océano profundo
-        let ocean_shallow = ShaderColor::from_rgb(30, 80, 150);    // Océano poco profundo
-        let beach_sand = ShaderColor::from_rgb(194, 178, 128);     // Arena de playa
-        let grassland = ShaderColor::from_rgb(85, 107, 47);        // Pastizal
-        let forest = ShaderColor::from_rgb(34, 139, 34);           // Bosque
-        let mountain_base = ShaderColor::from_rgb(101, 67, 33);    // Base montañosa
-        let mountain_rock = ShaderColor::from_rgb(120, 120, 120);  // Roca montañosa
-        let mountain_peak = ShaderColor::from_rgb(240, 240, 255);  // Pico nevado
-        let desert_sand = ShaderColor::from_rgb(210, 180, 140);    // Arena desértica
-        let volcanic_rock = ShaderColor::from_rgb(60, 40, 30);     // Roca volcánica
+    fn vertex_shader(&self, position: Vector3, normal: Vector3, _uv: (f32, f32), uniforms: &ShaderUniforms) -> (Vector3, Vector3) {
+        // === DEFORMACIÓN PROCEDURAL DEL TERRENO ===
         
-        // === CAPA 1: ALTURA BASE (Continentes y océanos) ===
-        let elevation_noise = fbm3d(
+        // Capa 1: Montañas grandes (escala global)
+        let mountain_noise = fbm3d(
             position.x * 2.0,
             position.y * 2.0,
             position.z * 2.0,
-            6
-        );
+            4
+        ) * 0.15;
         
-        // === CAPA 2: DETALLES GEOLÓGICOS ===
-        let geological_detail = fbm(uv.0 * 15.0, uv.1 * 15.0, 5);
-        let micro_detail = fbm(uv.0 * 40.0, uv.1 * 40.0, 3);
+        // Capa 2: Colinas medianas
+        let hill_noise = fbm3d(
+            position.x * 5.0,
+            position.y * 5.0,
+            position.z * 5.0,
+            3
+        ) * 0.08;
         
-        // === CAPA 3: CRÁTERES ===
-        let crater_noise = voronoi_noise(uv.0 * 8.0, uv.1 * 8.0);
-        let crater_intensity = smoothstep(0.15, 0.25, crater_noise);
+        // Capa 3: Detalles finos (rocas pequeñas)
+        let detail_noise = fbm3d(
+            position.x * 15.0,
+            position.y * 15.0,
+            position.z * 15.0,
+            2
+        ) * 0.03;
         
-        // === CAPA 4: PLACAS TECTÓNICAS ===
-        let tectonic_lines = ridge_noise(uv.0 * 6.0, uv.1 * 6.0, 4);
-        let tectonic_effect = smoothstep(0.65, 0.75, tectonic_lines);
-        
-        // === CAPA 5: SISTEMAS CLIMÁTICOS (Nubes) ===
-        let cloud_layer1 = fbm(uv.0 * 8.0 + uniforms.time * 0.02, uv.1 * 8.0, 4);
-        let cloud_layer2 = fbm(uv.0 * 12.0 - uniforms.time * 0.015, uv.1 * 12.0, 3);
-        let cloud_coverage = (cloud_layer1 * 0.6 + cloud_layer2 * 0.4);
-        
-        // === COMBINACIÓN DE ALTURA ===
-        let final_elevation = elevation_noise * 0.6 + geological_detail * 0.3 + micro_detail * 0.1;
-        
-        // === SELECCIÓN DE BIOMA POR ALTURA ===
-        let mut base_color = if final_elevation < 0.25 {
-            // Océano profundo
-            mix_color(ocean_deep, ocean_shallow, smoothstep(0.15, 0.25, final_elevation))
-        } else if final_elevation < 0.35 {
-            // Playa
-            mix_color(ocean_shallow, beach_sand, smoothstep(0.25, 0.35, final_elevation))
-        } else if final_elevation < 0.45 {
-            // Pastizales
-            mix_color(beach_sand, grassland, smoothstep(0.35, 0.45, final_elevation))
-        } else if final_elevation < 0.55 {
-            // Bosques
-            mix_color(grassland, forest, smoothstep(0.45, 0.55, final_elevation))
-        } else if final_elevation < 0.65 {
-            // Base montañosa / Desierto
-            let is_desert = simple_noise(uv.0 * 5.0, uv.1 * 5.0) > 0.5;
-            if is_desert {
-                mix_color(forest, desert_sand, smoothstep(0.55, 0.65, final_elevation))
-            } else {
-                mix_color(forest, mountain_base, smoothstep(0.55, 0.65, final_elevation))
-            }
-        } else if final_elevation < 0.75 {
-            // Montañas rocosas
-            mix_color(mountain_base, mountain_rock, smoothstep(0.65, 0.75, final_elevation))
+        // Capa 4: Cráteres procedurales
+        let crater_x = position.x * 8.0;
+        let crater_y = position.y * 8.0;
+        let crater_pattern = voronoi_noise(crater_x, crater_y);
+        let crater_depth = if crater_pattern < 0.2 {
+            -0.05 * (1.0 - crater_pattern / 0.2)
         } else {
-            // Picos nevados
-            mix_color(mountain_rock, mountain_peak, smoothstep(0.75, 0.85, final_elevation))
+            0.0
         };
         
-        // === APLICAR CRÁTERES ===
-        if crater_intensity > 0.5 && final_elevation > 0.35 {
-            base_color = mix_color(base_color, volcanic_rock, (1.0 - crater_intensity) * 0.6);
+        // Capa 5: Animación sutil (pulso tectónico)
+        let tectonic_pulse = (uniforms.time * 0.5).sin() * 0.01;
+        let pulse_noise = fbm3d(
+            position.x * 3.0 + uniforms.time * 0.1,
+            position.y * 3.0,
+            position.z * 3.0,
+            2
+        ) * tectonic_pulse;
+        
+        // Combinar todas las deformaciones
+        let total_displacement = mountain_noise + hill_noise + detail_noise + crater_depth + pulse_noise;
+        
+        // Aplicar deformación a lo largo de la normal
+        let deformed_position = Vector3::new(
+            position.x + normal.x * total_displacement,
+            position.y + normal.y * total_displacement,
+            position.z + normal.z * total_displacement,
+        );
+        
+        // Recalcular normal aproximada basada en deformación
+        let epsilon = 0.01;
+        let neighbor_noise = fbm3d(
+            (position.x + epsilon) * 2.0,
+            (position.y + epsilon) * 2.0,
+            (position.z + epsilon) * 2.0,
+            4
+        ) * 0.15;
+        
+        let tangent_displacement = neighbor_noise - mountain_noise;
+        let normal_perturbation = Vector3::new(
+            -tangent_displacement,
+            -tangent_displacement,
+            -tangent_displacement,
+        ) * 0.3;
+        
+        let perturbed_normal = Vector3::new(
+            normal.x + normal_perturbation.x,
+            normal.y + normal_perturbation.y,
+            normal.z + normal_perturbation.z,
+        ).normalize();
+        
+        (deformed_position, perturbed_normal)
+    }
+
+    fn fragment_shader(&self, position: Vector3, normal: Vector3, uv: (f32, f32), uniforms: &ShaderUniforms) -> ShaderColor {
+        // === PALETA DE COLORES GRISES (NO CAMBIA CON EL TIEMPO) ===
+        let darkest_gray = ShaderColor::from_rgb(20, 20, 25);      // Gris casi negro
+        let dark_gray = ShaderColor::from_rgb(50, 50, 55);         // Gris oscuro
+        let medium_dark = ShaderColor::from_rgb(80, 80, 85);       // Gris medio-oscuro
+        let medium_gray = ShaderColor::from_rgb(110, 110, 115);    // Gris medio
+        let light_gray = ShaderColor::from_rgb(140, 140, 145);     // Gris claro
+        let lighter_gray = ShaderColor::from_rgb(170, 170, 175);   // Gris más claro
+        let _lightest_gray = ShaderColor::from_rgb(200, 200, 205);  // Gris casi blanco (reservado)
+        let lightest_gray = ShaderColor::from_rgb(200, 200, 205);  // Gris casi blanco
+        
+        // === CAPA 1: TEXTURA BASE (Variación de rocas) ===
+        let rock_variation = fbm3d(
+            position.x * 8.0,
+            position.y * 8.0,
+            position.z * 8.0,
+            5
+        );
+        
+        // === CAPA 2: DETALLES GEOLÓGICOS (Erosión y fracturas) ===
+        let erosion = fbm(uv.0 * 20.0, uv.1 * 20.0, 4);
+        let fractures = ridge_noise(uv.0 * 15.0, uv.1 * 15.0, 3);
+        
+        // === CAPA 3: CRÁTERES (Oscurecimiento) ===
+        let crater_noise = voronoi_noise(uv.0 * 8.0, uv.1 * 8.0);
+        let is_crater = crater_noise < 0.2;
+        
+        // === CAPA 4: VETAS MINERALES (Líneas más claras) ===
+        let mineral_veins = ridge_noise(uv.0 * 25.0, uv.1 * 25.0, 2);
+        let has_veins = mineral_veins > 0.75;
+        
+        // === SELECCIÓN DE COLOR BASE (Solo grises, NO cambia) ===
+        let base_color = if rock_variation < 0.2 {
+            mix_color(darkest_gray, dark_gray, smoothstep(0.0, 0.2, rock_variation))
+        } else if rock_variation < 0.4 {
+            mix_color(dark_gray, medium_dark, smoothstep(0.2, 0.4, rock_variation))
+        } else if rock_variation < 0.6 {
+            mix_color(medium_dark, medium_gray, smoothstep(0.4, 0.6, rock_variation))
+        } else if rock_variation < 0.75 {
+            mix_color(medium_gray, light_gray, smoothstep(0.6, 0.75, rock_variation))
+        } else if rock_variation < 0.85 {
+            mix_color(light_gray, lighter_gray, smoothstep(0.75, 0.85, rock_variation))
+        } else {
+            mix_color(lighter_gray, lightest_gray, smoothstep(0.85, 1.0, rock_variation))
+        };
+        
+        let mut final_base = base_color;
+        
+        // === APLICAR CRÁTERES (Oscurecer) ===
+        if is_crater {
+            final_base = mix_color(final_base, darkest_gray, 0.6);
         }
         
-        // === APLICAR LÍNEAS TECTÓNICAS ===
-        if tectonic_effect > 0.7 {
-            base_color = mix_color(base_color, volcanic_rock, tectonic_effect * 0.4);
+        // === APLICAR EROSIÓN (Variación sutil) ===
+        if erosion > 0.6 {
+            let erosion_factor = smoothstep(0.6, 0.8, erosion);
+            final_base = mix_color(final_base, dark_gray, erosion_factor * 0.3);
         }
         
-        // === APLICAR NUBES (solo sobre tierra) ===
-        let cloud_white = ShaderColor::from_rgb(255, 255, 255);
-        if cloud_coverage > 0.55 && final_elevation > 0.35 {
-            let cloud_alpha = smoothstep(0.55, 0.7, cloud_coverage) * 0.7;
-            base_color = mix_color(base_color, cloud_white, cloud_alpha);
+        // === APLICAR FRACTURAS (Oscurecer líneas) ===
+        if fractures > 0.7 {
+            let fracture_intensity = smoothstep(0.7, 0.85, fractures);
+            final_base = mix_color(final_base, darkest_gray, fracture_intensity * 0.5);
         }
         
-        // === ILUMINACIÓN AVANZADA ===
+        // === APLICAR VETAS MINERALES (Aclarar líneas) ===
+        if has_veins {
+            let vein_intensity = smoothstep(0.75, 0.9, mineral_veins);
+            final_base = mix_color(final_base, lightest_gray, vein_intensity * 0.4);
+        }
+        // === APLICAR VETAS MINERALES (Aclarar líneas) ===
+        if has_veins {
+            let vein_intensity = smoothstep(0.75, 0.9, mineral_veins);
+            final_base = mix_color(final_base, lightest_gray, vein_intensity * 0.4);
+        }
+        
+        // === ILUMINACIÓN (Sin colores, solo intensidad) ===
         let light_dir = uniforms.light_direction.normalize();
         let view_dir = (uniforms.camera_position - position).normalize();
         
         // Difusa básica
         let diffuse = normal.dot(&light_dir).max(0.0);
         
-        // Especular para océanos
-        let is_ocean = final_elevation < 0.35;
-        let specular = if is_ocean {
-            let reflect_dir = normal * (2.0 * normal.dot(&light_dir)) - light_dir;
-            view_dir.dot(&reflect_dir).max(0.0).powf(20.0) * 0.8
-        } else {
-            0.0
-        };
+        // Especular suave para rocas
+        let reflect_dir = normal * (2.0 * normal.dot(&light_dir)) - light_dir;
+        let specular = view_dir.dot(&reflect_dir).max(0.0).powf(8.0) * 0.2;
         
-        // Rim lighting (atmósfera)
-        let rim = (1.0 - view_dir.dot(&normal).abs()).powf(3.0) * 0.4;
-        let atmosphere_color = ShaderColor::from_rgb(135, 206, 250); // Azul cielo
+        // Oclusión ambiental basada en curvatura
+        let ambient_occlusion = (1.0 - erosion * 0.3).max(0.3);
         
-        // Sombras suaves
-        let shadow = smoothstep(-0.1, 0.1, diffuse);
+        let ambient = 0.2;
+        let lighting_intensity = (ambient * ambient_occlusion + diffuse * 0.7 + specular).min(1.2);
         
-        let ambient = 0.25;
-        let lighting_intensity = (ambient + diffuse * 0.6 * shadow + specular).min(1.3);
-        
-        // Color final con iluminación
-        let mut final_color = ShaderColor::new(
-            base_color.r * lighting_intensity,
-            base_color.g * lighting_intensity,
-            base_color.b * lighting_intensity,
+        // Color final (SOLO GRISES, sin cambios de color)
+        let final_color = ShaderColor::new(
+            final_base.r * lighting_intensity,
+            final_base.g * lighting_intensity,
+            final_base.b * lighting_intensity,
             1.0,
         );
-        
-        // Añadir atmósfera en los bordes
-        if rim > 0.3 {
-            final_color = mix_color(final_color, atmosphere_color, rim * 0.5);
-        }
         
         ShaderColor::new(
             final_color.r.clamp(0.0, 1.0),
@@ -327,8 +378,8 @@ impl PlanetShader for RockyPlanetShader {
 }
 
 // ============================================================================
-// PLANETA 2: GIGANTE GASEOSO CON TORMENTAS DINÁMICAS
-// Características: Bandas atmosféricas, vórtices, tormentas, turbulencia
+// PLANETA 2: GIGANTE GASEOSO SUAVE Y FLUIDO
+// Características: Bandas atmosféricas suaves, transiciones graduales, apariencia gaseosa
 // ============================================================================
 pub struct GasGiantShader;
 
@@ -338,152 +389,151 @@ impl PlanetShader for GasGiantShader {
     }
 
     fn fragment_shader(&self, position: Vector3, normal: Vector3, uv: (f32, f32), uniforms: &ShaderUniforms) -> ShaderColor {
-        // === PALETA DE COLORES JUPITERIANA ===
-        let deep_red = ShaderColor::from_rgb(139, 0, 0);           // Rojo profundo
-        let brick_red = ShaderColor::from_rgb(178, 34, 34);        // Rojo ladrillo
-        let orange_red = ShaderColor::from_rgb(255, 69, 0);        // Naranja rojizo
-        let orange = ShaderColor::from_rgb(255, 140, 0);           // Naranja
-        let gold = ShaderColor::from_rgb(255, 215, 0);             // Dorado
-        let cream = ShaderColor::from_rgb(255, 248, 220);          // Crema
-        let pale_yellow = ShaderColor::from_rgb(255, 255, 200);    // Amarillo pálido
-        let white_cream = ShaderColor::from_rgb(255, 250, 240);    // Blanco cremoso
-        let storm_white = ShaderColor::from_rgb(245, 245, 255);    // Blanco tormenta
+        // === PALETA DE COLORES GASEOSOS (MÁS SUAVES) ===
+        let gas_dark_1 = ShaderColor::from_rgb(70, 45, 25);        // Marrón oscuro gaseoso
+        let gas_dark_2 = ShaderColor::from_rgb(95, 60, 30);        // Marrón medio-oscuro
+        let gas_medium_1 = ShaderColor::from_rgb(140, 90, 50);     // Naranja terroso
+        let gas_medium_2 = ShaderColor::from_rgb(170, 115, 65);    // Naranja cálido
+        let gas_light_1 = ShaderColor::from_rgb(210, 160, 100);    // Crema anaranjado
+        let gas_light_2 = ShaderColor::from_rgb(235, 200, 140);    // Crema claro
+        let gas_bright = ShaderColor::from_rgb(250, 235, 190);     // Casi blanco cremoso
+        let storm_red = ShaderColor::from_rgb(160, 60, 45);        // Rojo tormenta
         
-        // === CAPA 1: BANDAS ATMOSFÉRICAS PRINCIPALES ===
-        let band_frequency = 10.0;
-        let band_offset = uniforms.time * 0.03; // Rotación diferencial
-        let latitude = uv.1;
+        // === COORDENADAS Y ANIMACIÓN ===
+        let latitude = uv.1; // Coordenada vertical (0 a 1)
+        let band_frequency = 8.0; // Frecuencia de bandas (menos que antes para más suavidad)
         
-        // Diferentes velocidades por banda (rotación diferencial)
-        let band_speed = (latitude * band_frequency).sin() * 0.02 + 0.01;
-        let band_position = (latitude * band_frequency + band_offset * band_speed).sin();
+        // Rotación diferencial suave
+        let band_speed = (latitude * 8.0).sin() * 0.015 + 0.01;
+        let animated_longitude = uv.0 + uniforms.time * band_speed;
         
-        // === CAPA 2: TURBULENCIA ATMOSFÉRICA ===
+        // === CAPA 1: BANDAS BASE SUAVES ===
+        let band_base = (latitude * band_frequency).sin();
+        
+        // === CAPA 2: TURBULENCIA ATMOSFÉRICA MULTICAPA (MÁS SUAVE) ===
         let turbulence1 = fbm(
-            uv.0 * 8.0 + uniforms.time * 0.04,
-            uv.1 * 6.0,
-            6
-        );
-        let turbulence2 = fbm(
-            uv.0 * 12.0 - uniforms.time * 0.03,
-            uv.1 * 8.0,
+            animated_longitude * 5.0,
+            latitude * 4.0,
             5
-        );
+        ) * 0.4;
+        
+        let turbulence2 = fbm(
+            animated_longitude * 8.0 + uniforms.time * 0.02,
+            latitude * 6.0,
+            4
+        ) * 0.3;
+        
         let turbulence3 = fbm(
-            uv.0 * 20.0 + uniforms.time * 0.02,
-            uv.1 * 15.0,
+            animated_longitude * 12.0 - uniforms.time * 0.015,
+            latitude * 10.0,
+            3
+        ) * 0.2;
+        
+        // Turbulencia suave de alta frecuencia
+        let fine_turbulence = fbm(
+            animated_longitude * 20.0 + uniforms.time * 0.03,
+            latitude * 15.0,
+            3
+        ) * 0.1;
+        
+        // Combinar todas las turbulencias
+        let combined_turbulence = turbulence1 + turbulence2 + turbulence3 + fine_turbulence;
+        
+        // === CAPA 3: FLUJO HORIZONTAL (Corrientes de chorro suaves) ===
+        let jet_flow = fbm(
+            animated_longitude * 15.0 + uniforms.time * 0.08,
+            latitude * 3.0,
             4
-        );
+        ) * 0.15;
         
-        let combined_turbulence = turbulence1 * 0.5 + turbulence2 * 0.3 + turbulence3 * 0.2;
+        // === CONSTRUCCIÓN DEL VALOR DE BANDA FINAL (MUY SUAVE) ===
+        let distorted_band = band_base + combined_turbulence + jet_flow;
         
-        // === CAPA 3: VÓRTICES Y TORMENTAS ===
-        let storm_centers = voronoi_noise(uv.0 * 6.0, uv.1 * 6.0);
-        let vortex_pattern = fbm(
-            uv.0 * 15.0 + uniforms.time * 0.1,
-            uv.1 * 15.0 - uniforms.time * 0.08,
-            4
-        );
+        // === SELECCIÓN DE COLOR CON TRANSICIONES MUY SUAVES ===
+        // Normalizar el valor de banda para mejor distribución
+        let normalized_band = (distorted_band + 1.5) / 3.0; // Rango aproximado 0-1
         
-        // Gran Mancha Roja simulada
-        let red_spot_x = 0.3 + (uniforms.time * 0.01).sin() * 0.05;
-        let red_spot_y = 0.6;
-        let dist_to_spot = ((uv.0 - red_spot_x).powi(2) + (uv.1 - red_spot_y).powi(2)).sqrt();
-        let red_spot_influence = smoothstep(0.15, 0.05, dist_to_spot);
-        
-        // Vórtices secundarios
-        let vortex_strength = smoothstep(0.25, 0.15, storm_centers) * vortex_pattern;
-        
-        // === CAPA 4: CORRIENTES DE CHORRO ===
-        let jet_stream = ridge_noise(uv.0 * 25.0 + uniforms.time * 0.15, uv.1 * 3.0, 3);
-        let jet_effect = smoothstep(0.7, 0.85, jet_stream);
-        
-        // === CONSTRUCCIÓN DEL COLOR BASE ===
-        let distorted_band = band_position + combined_turbulence * 0.8;
-        
-        // Selección de banda por latitud
-        let mut base_color = if distorted_band > 0.8 {
-            mix_color(white_cream, storm_white, smoothstep(0.8, 1.0, distorted_band))
-        } else if distorted_band > 0.5 {
-            mix_color(cream, white_cream, smoothstep(0.5, 0.8, distorted_band))
-        } else if distorted_band > 0.2 {
-            mix_color(gold, cream, smoothstep(0.2, 0.5, distorted_band))
-        } else if distorted_band > -0.1 {
-            mix_color(orange, gold, smoothstep(-0.1, 0.2, distorted_band))
-        } else if distorted_band > -0.4 {
-            mix_color(orange_red, orange, smoothstep(-0.4, -0.1, distorted_band))
-        } else if distorted_band > -0.6 {
-            mix_color(brick_red, orange_red, smoothstep(-0.6, -0.4, distorted_band))
+        let base_color = if normalized_band > 0.85 {
+            mix_color(gas_bright, gas_light_2, smoothstep(0.85, 1.0, normalized_band))
+        } else if normalized_band > 0.7 {
+            mix_color(gas_light_2, gas_bright, smoothstep(0.7, 0.85, normalized_band))
+        } else if normalized_band > 0.55 {
+            mix_color(gas_light_1, gas_light_2, smoothstep(0.55, 0.7, normalized_band))
+        } else if normalized_band > 0.4 {
+            mix_color(gas_medium_2, gas_light_1, smoothstep(0.4, 0.55, normalized_band))
+        } else if normalized_band > 0.25 {
+            mix_color(gas_medium_1, gas_medium_2, smoothstep(0.25, 0.4, normalized_band))
+        } else if normalized_band > 0.15 {
+            mix_color(gas_dark_2, gas_medium_1, smoothstep(0.15, 0.25, normalized_band))
         } else {
-            mix_color(deep_red, brick_red, smoothstep(-0.8, -0.6, distorted_band))
+            mix_color(gas_dark_1, gas_dark_2, smoothstep(0.0, 0.15, normalized_band))
         };
         
-        // === APLICAR GRAN MANCHA ROJA ===
-        if red_spot_influence > 0.1 {
-            let spot_rotation = (uniforms.time * 0.5 + dist_to_spot * 10.0).sin() * 0.5 + 0.5;
-            let spot_color = mix_color(deep_red, brick_red, spot_rotation);
-            base_color = mix_color(base_color, spot_color, red_spot_influence * 0.9);
+        // === CAPA 4: REMOLINOS Y VÓRTICES SUAVES ===
+        let vortex_x = 0.35 + (uniforms.time * 0.008).sin() * 0.04;
+        let vortex_y = 0.65;
+        let dist_to_vortex = ((animated_longitude - vortex_x).powi(2) + (latitude - vortex_y).powi(2)).sqrt();
+        
+        // Vórtice con gradiente muy suave
+        let vortex_influence = smoothstep(0.15, 0.0, dist_to_vortex);
+        
+        let mut final_color = base_color;
+        
+        if vortex_influence > 0.05 {
+            // Patrón de rotación del vórtice
+            let angle = (animated_longitude - vortex_x).atan2(latitude - vortex_y);
+            let rotation_pattern = (angle * 3.0 + uniforms.time * 1.5 - dist_to_vortex * 8.0).sin() * 0.5 + 0.5;
+            
+            let vortex_color = mix_color(storm_red, gas_medium_2, rotation_pattern);
+            final_color = mix_color(final_color, vortex_color, vortex_influence * 0.8);
         }
         
-        // === APLICAR VÓRTICES ===
-        if vortex_strength > 0.6 {
-            let vortex_color = mix_color(pale_yellow, storm_white, vortex_strength);
-            base_color = mix_color(base_color, vortex_color, vortex_strength * 0.6);
-        }
-        
-        // === APLICAR CORRIENTES DE CHORRO ===
-        if jet_effect > 0.5 {
-            base_color = mix_color(base_color, pale_yellow, jet_effect * 0.4);
-        }
-        
-        // === CAPA 5: NUBES DE ALTA ALTITUD ===
+        // === CAPA 5: NUBES DE ALTA ALTITUD (MUY SUAVES) ===
         let high_clouds = fbm(
-            uv.0 * 18.0 + uniforms.time * 0.08,
-            uv.1 * 12.0,
-            4
+            animated_longitude * 10.0 + uniforms.time * 0.05,
+            latitude * 8.0,
+            3
         );
-        if high_clouds > 0.65 {
-            let cloud_intensity = smoothstep(0.65, 0.8, high_clouds);
-            base_color = mix_color(base_color, storm_white, cloud_intensity * 0.5);
+        
+        if high_clouds > 0.6 {
+            let cloud_intensity = smoothstep(0.6, 0.75, high_clouds) * 0.3;
+            final_color = mix_color(final_color, gas_bright, cloud_intensity);
+        }
+        if high_clouds > 0.6 {
+            let cloud_intensity = smoothstep(0.6, 0.75, high_clouds) * 0.3;
+            final_color = mix_color(final_color, gas_bright, cloud_intensity);
         }
         
-        // === ILUMINACIÓN AVANZADA ===
+        // === ILUMINACIÓN ATMOSFÉRICA SUAVE ===
         let light_dir = uniforms.light_direction.normalize();
         let view_dir = (uniforms.camera_position - position).normalize();
         
-        // Difusa con envolvimiento suave (atmósfera densa)
-        let wrap_diffuse = (normal.dot(&light_dir) * 0.5 + 0.5).max(0.0);
+        // Difusa envolvente (atmósfera muy densa y difusa)
+        let wrap_diffuse = (normal.dot(&light_dir) * 0.3 + 0.7).max(0.0);
         
-        // Scattering atmosférico
-        let scatter = (1.0 - normal.dot(&light_dir).abs()).powf(2.0) * 0.3;
+        // Subsurface scattering simulado (luz que atraviesa la atmósfera)
+        let subsurface = (1.0 + normal.dot(&light_dir)) * 0.25;
         
-        // Rim lighting (atmósfera brillante)
-        let rim = (1.0 - view_dir.dot(&normal).abs()).powf(2.5);
-        let rim_intensity = rim * 0.6;
+        // Rim lighting muy suave
+        let rim = (1.0 - view_dir.dot(&normal).abs()).powf(3.0) * 0.4;
         
-        // Auto-iluminación de tormentas
-        let storm_glow = (vortex_strength * 0.3 + red_spot_influence * 0.2);
+        // Auto-iluminación del vórtice
+        let self_illumination = vortex_influence * 0.15;
         
-        let ambient = 0.3;
-        let lighting_intensity = (ambient + wrap_diffuse * 0.5 + scatter + storm_glow).min(1.5);
+        let ambient = 0.4; // Ambiente más alto para efecto gaseoso
+        let lighting_intensity = (ambient + wrap_diffuse * 0.45 + subsurface + rim + self_illumination).min(1.5);
         
-        let mut final_color = ShaderColor::new(
-            base_color.r * lighting_intensity,
-            base_color.g * lighting_intensity,
-            base_color.b * lighting_intensity,
+        let lit_color = ShaderColor::new(
+            final_color.r * lighting_intensity,
+            final_color.g * lighting_intensity,
+            final_color.b * lighting_intensity,
             1.0,
         );
         
-        // Añadir brillo atmosférico en los bordes
-        if rim_intensity > 0.3 {
-            let atmosphere_glow = ShaderColor::from_rgb(255, 220, 180);
-            final_color = mix_color(final_color, atmosphere_glow, rim_intensity * 0.5);
-        }
-        
         ShaderColor::new(
-            final_color.r.clamp(0.0, 1.0),
-            final_color.g.clamp(0.0, 1.0),
-            final_color.b.clamp(0.0, 1.0),
+            lit_color.r.clamp(0.0, 1.0),
+            lit_color.g.clamp(0.0, 1.0),
+            lit_color.b.clamp(0.0, 1.0),
             1.0,
         )
     }
