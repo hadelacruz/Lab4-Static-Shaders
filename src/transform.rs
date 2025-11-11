@@ -1,6 +1,5 @@
 // ============================================================================
 // MÓDULO DE TRANSFORMACIONES MATEMÁTICAS 4x4
-// Implementa matrices de transformación para gráficos 3D
 // ============================================================================
 
 use crate::vector::Vector3;
@@ -68,7 +67,6 @@ impl Transform4x4 {
         let w_component = self.elements[3][0] * vec.x + self.elements[3][1] * vec.y 
                         + self.elements[3][2] * vec.z + self.elements[3][3];
         
-        // Perspectiva correcta si w != 1
         if w_component != 0.0 && w_component != 1.0 {
             Vector3::new(
                 transformed_x / w_component,
@@ -81,14 +79,7 @@ impl Transform4x4 {
     }
 }
 
-// ============================================================================
-// FUNCIONES DE UTILIDAD PARA CREAR TRANSFORMACIONES
-// ============================================================================
-
 /// Crea una matriz de vista (lookAt) para la cámara
-/// - observer: Posición del observador (cámara)
-/// - focus: Punto hacia donde mira la cámara
-/// - up_direction: Vector que define "arriba"
 pub fn build_view_transform(observer: Vector3, focus: Vector3, up_direction: Vector3) -> Transform4x4 {
     // Vector dirección (de la cámara al objetivo)
     let mut direction = Vector3::new(
@@ -139,10 +130,6 @@ pub fn build_view_transform(observer: Vector3, focus: Vector3, up_direction: Vec
 }
 
 /// Crea una matriz de proyección perspectiva
-/// - vertical_fov: Campo de visión vertical en radianes
-/// - aspect_ratio: Relación ancho/alto
-/// - near_plane: Distancia al plano cercano
-/// - far_plane: Distancia al plano lejano
 pub fn build_perspective_projection(
     vertical_fov: f32, 
     aspect_ratio: f32, 
@@ -161,8 +148,6 @@ pub fn build_perspective_projection(
 }
 
 /// Crea una transformación de viewport (NDC a coordenadas de pantalla)
-/// - origin_x, origin_y: Esquina superior izquierda del viewport
-/// - width, height: Dimensiones del viewport en píxeles
 pub fn build_viewport_transform(origin_x: f32, origin_y: f32, width: f32, height: f32) -> Transform4x4 {
     let half_w = width * 0.5;
     let half_h = height * 0.5;
@@ -176,7 +161,6 @@ pub fn build_viewport_transform(origin_x: f32, origin_y: f32, width: f32, height
 }
 
 /// Crea una rotación alrededor del eje Y
-/// - radians: Ángulo de rotación en radianes
 pub fn build_y_axis_rotation(radians: f32) -> Transform4x4 {
     let cosine = radians.cos();
     let sine = radians.sin();
@@ -190,7 +174,6 @@ pub fn build_y_axis_rotation(radians: f32) -> Transform4x4 {
 }
 
 /// Crea una transformación de traslación
-/// - offset_x, offset_y, offset_z: Desplazamiento en cada eje
 pub fn build_translation(offset_x: f32, offset_y: f32, offset_z: f32) -> Transform4x4 {
     Transform4x4::from_elements(
         1.0, 0.0, 0.0, offset_x,

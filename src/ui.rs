@@ -124,15 +124,15 @@ pub fn render_ui(d: &mut RaylibDrawHandle, current_planet: usize, fps: i32) {
     for (i, info) in PLANET_INFO.iter().enumerate() {
         let is_current = i == current_planet;
         let text_color = if is_current {
-            Color::new(255, 255, 100, 255)  // Amarillo para el planeta activo
+            Color::new(255, 255, 100, 255)  
         } else {
-            Color::new(200, 200, 200, 255)  // Gris claro para los demás
+            Color::new(200, 200, 200, 255)  
         };
         
         let bg_color = if is_current {
-            Color::new(50, 50, 100, 150)  // Fondo azul oscuro para el activo
+            Color::new(50, 50, 100, 150)  
         } else {
-            Color::new(0, 0, 0, 0)  // Transparente para los demás
+            Color::new(0, 0, 0, 0)  
         };
         
         // Fondo de la fila si está activa
@@ -189,11 +189,11 @@ pub fn render_ui(d: &mut RaylibDrawHandle, current_planet: usize, fps: i32) {
     
     // FPS en la esquina superior derecha
     let fps_color = if fps >= 55 {
-        Color::new(0, 255, 100, 255)  // Verde
+        Color::new(0, 255, 100, 255)  
     } else if fps >= 30 {
-        Color::new(255, 200, 0, 255)  // Amarillo
+        Color::new(255, 200, 0, 255)  
     } else {
-        Color::new(255, 50, 50, 255)  // Rojo
+        Color::new(255, 50, 50, 255)  
     };
     
     let fps_text = format!("FPS: {}", fps);

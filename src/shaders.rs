@@ -47,11 +47,8 @@ pub trait PlanetShader {
     fn fragment_shader(&self, position: Vector3, normal: Vector3, uv: (f32, f32), uniforms: &ShaderUniforms) -> ShaderColor;
 }
 
-// ============================================================================
-// FUNCIONES DE RUIDO COMPARTIDAS (PÚBLICAS para uso en módulos planets)
-// ============================================================================
 
-// Función de ruido Perlin simplificado mejorado
+// Función de ruido Perlin
 pub fn perlin_noise(x: f32, y: f32, z: f32) -> f32 {
     let xi = x.floor() as i32;
     let yi = y.floor() as i32;
@@ -112,7 +109,7 @@ pub fn fbm(mut x: f32, mut y: f32, octaves: i32) -> f32 {
     value
 }
 
-// Función de ruido 3D mejorado
+// Función de ruido 3D
 pub fn fbm3d(x: f32, y: f32, z: f32, octaves: i32) -> f32 {
     let mut value = 0.0;
     let mut amplitude = 0.5;

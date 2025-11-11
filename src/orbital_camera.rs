@@ -1,6 +1,5 @@
 // ============================================================================
 // SISTEMA DE CÁMARA ORBITAL INTERACTIVA
-// Permite control de cámara con mouse para visualización 3D
 // ============================================================================
 
 #![allow(dead_code)]
@@ -13,19 +12,19 @@ use std::f32::consts::PI;
 /// Controlador de cámara orbital con interacción por mouse
 pub struct OrbitalCamera {
     // Configuración espacial
-    pub position: Vector3,      // Posición actual de la cámara en el espacio
-    pub focal_point: Vector3,   // Punto central alrededor del cual orbita
-    pub up_vector: Vector3,     // Define la orientación "arriba"
+    pub position: Vector3,      
+    pub focal_point: Vector3,   
+    pub up_vector: Vector3,     
 
     // Parámetros orbitales (coordenadas esféricas)
-    pub azimuth: f32,           // Ángulo horizontal (rotación en plano XZ)
-    pub elevation: f32,         // Ángulo vertical (altura sobre el plano)
-    pub radius: f32,            // Distancia radial desde el punto focal
+    pub azimuth: f32,           
+    pub elevation: f32,         
+    pub radius: f32,            
 
     // Configuración de sensibilidad
-    pub orbit_sensitivity: f32,  // Velocidad de rotación con mouse
-    pub zoom_sensitivity: f32,   // Velocidad de acercamiento/alejamiento
-    pub pan_sensitivity: f32,    // Velocidad de desplazamiento lateral
+    pub orbit_sensitivity: f32,  
+    pub zoom_sensitivity: f32,   
+    pub pan_sensitivity: f32,    
 }
 
 impl OrbitalCamera {
@@ -97,7 +96,6 @@ impl OrbitalCamera {
 
     /// Recalcula la posición de la cámara usando coordenadas esféricas
     fn recalculate_position(&mut self) {
-        // Conversión de esféricas a cartesianas
         let horizontal_distance = self.radius * self.elevation.cos();
         
         let cam_x = self.focal_point.x + horizontal_distance * self.azimuth.cos();

@@ -17,7 +17,6 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    /// Carga una malla desde un archivo OBJ (formato de Blender)
     pub fn from_obj(path: &str) -> Result<Self, String> {
         let file = File::open(path).map_err(|e| format!("No se pudo abrir el archivo OBJ: {}", e))?;
         let reader = BufReader::new(file);

@@ -31,7 +31,6 @@ struct Planet {
 
 impl Planet {
     fn new(planet_type: PlanetType) -> Self {
-        // Cargar el modelo OBJ de Blender (obligatorio)
         let mesh = Mesh::from_obj("src/sphere.obj")
             .expect("ERROR CRÍTICO: No se pudo cargar el archivo 'src/sphere.obj'. Asegúrate de que el archivo exista.");
         
@@ -138,9 +137,9 @@ fn render_planet_software(
 }
 
 fn render_galaxy_background(d: &mut RaylibDrawHandle, width: i32, height: i32, time: f32) {
-    // Fondo base con gradiente de galaxia (azul-púrpura oscuro)
-    let top_color = raylib::prelude::Color::new(5, 5, 20, 255);      // Azul muy oscuro
-    let bottom_color = raylib::prelude::Color::new(15, 5, 25, 255);  // Púrpura muy oscuro
+    // Fondo base con gradiente de galaxia
+    let top_color = raylib::prelude::Color::new(5, 5, 20, 255);      
+    let bottom_color = raylib::prelude::Color::new(15, 5, 25, 255);  
     
     // Dibujar gradiente vertical
     for y in 0..height {
@@ -160,8 +159,7 @@ fn render_galaxy_background(d: &mut RaylibDrawHandle, width: i32, height: i32, t
         ((nn & 0x7fffffff) as f32 / 1073741824.0).abs()
     };
     
-    // Dibujar estrellas como puntos blancos
-    let star_density = 0.0008; // Densidad de estrellas
+    let star_density = 0.0008; 
     let total_stars = (width * height) as f32 * star_density;
     
     for i in 0..(total_stars as i32) {
@@ -171,13 +169,11 @@ fn render_galaxy_background(d: &mut RaylibDrawHandle, width: i32, height: i32, t
         let star_x = (hash(seed_x, 0) * width as f32) as i32;
         let star_y = (hash(seed_y, 1) * height as f32) as i32;
         
-        // Variación en brillo de estrellas
         let brightness = hash(seed_x, seed_y);
         
         if brightness > 0.3 {
             let intensity = ((brightness - 0.3) / 0.7 * 255.0) as u8;
             
-            // Algunas estrellas parpadean
             let twinkle = ((time * 2.0 + i as f32 * 0.1).sin() * 0.3 + 0.7).max(0.0).min(1.0);
             let final_intensity = (intensity as f32 * twinkle) as u8;
             
@@ -198,7 +194,6 @@ fn render_galaxy_background(d: &mut RaylibDrawHandle, width: i32, height: i32, t
         }
     }
     
-    // Nebulosa sutil de fondo
     for i in 0..30 {
         let nebula_x = (hash(i * 123, 456) * width as f32) as i32;
         let nebula_y = (hash(i * 789, 321) * height as f32) as i32;
@@ -266,10 +261,8 @@ fn main() {
         
         let mut d = rl.begin_drawing(&thread);
         
-        // Renderizar fondo de galaxia
         render_galaxy_background(&mut d, 1024, 768, time);
         
-        // Renderizar usando nuestro software renderer
         render_planet_software(
             &planets[current_planet],
             &camera,
@@ -279,7 +272,6 @@ fn main() {
             768,
         );
         
-        // Renderizar UI mejorada
         let current_fps = d.get_fps() as i32;
         render_ui(&mut d, current_planet, current_fps);
     }
