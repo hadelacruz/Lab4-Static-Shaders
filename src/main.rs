@@ -1,10 +1,10 @@
 mod vector;
-mod transform;        // Anteriormente "matrix" - refactorizado
-mod orbital_camera;   // Anteriormente "camera" - refactorizado
+mod transform;        
+mod orbital_camera;   
 mod sphere;
 mod shaders;
-mod planets;  // Módulo de planetas separados
-mod ui;  // Nuevo módulo de interfaz
+mod planets;  
+mod ui;  
 
 use raylib::prelude::*;
 use vector::Vector3;
@@ -12,7 +12,7 @@ use orbital_camera::OrbitalCamera;
 use sphere::Mesh;
 use shaders::{PlanetShader, ShaderUniforms, ShaderColor};
 use planets::{RockyPlanetShader, GasGiantShader, CrystalPlanetShader, LavaPlanetShader, SaturnShader};
-use ui::render_ui;  // Importar función de UI
+use ui::render_ui;  
 
 enum PlanetType {
     Rocky,
@@ -33,7 +33,7 @@ impl Planet {
     fn new(planet_type: PlanetType) -> Self {
         // Cargar el modelo OBJ de Blender (obligatorio)
         let mesh = Mesh::from_obj("src/sphere.obj")
-            .expect("❌ ERROR CRÍTICO: No se pudo cargar el archivo 'src/sphere.obj'. Asegúrate de que el archivo exista.");
+            .expect("ERROR CRÍTICO: No se pudo cargar el archivo 'src/sphere.obj'. Asegúrate de que el archivo exista.");
         
         let (shader, rotation_speed): (Box<dyn PlanetShader>, f32) = match planet_type {
             PlanetType::Rocky => (Box::new(RockyPlanetShader), 0.5),
@@ -74,7 +74,6 @@ fn render_planet_software(
     );
     let viewport_matrix = transform::build_viewport_transform(0.0, 0.0, width as f32, height as f32);
     
-    // Matriz de transformación del planeta (solo rotación)
     let rotation_matrix = transform::build_y_axis_rotation(planet.rotation);
     
     // Renderizar triángulos
@@ -218,7 +217,7 @@ fn render_galaxy_background(d: &mut RaylibDrawHandle, width: i32, height: i32, t
 fn main() {
     let (mut rl, thread) = raylib::init()
         .size(1024, 768)
-        .title("Laboratorio No. 4 - Shaders")
+        .title("Laboratorio No. 4 - Humberto de la Cruz")
         .build();
 
     let mut camera = OrbitalCamera::new();

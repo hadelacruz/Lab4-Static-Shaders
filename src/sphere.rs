@@ -152,7 +152,7 @@ impl Mesh {
             }
         }
         
-        println!("✅ Modelo OBJ cargado: {} vértices, {} triángulos", vertices.len(), indices.len() / 3);
+        println!("Modelo OBJ cargado: {} vértices, {} triángulos", vertices.len(), indices.len() / 3);
         
         Ok(Mesh {
             vertices,
