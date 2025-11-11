@@ -1,9 +1,9 @@
 [package]
-name = "lab4"
-version = "0.1.0"
+name = "lab4-static-shaders"
+version = "1.1.0"
 edition = "2021"
+authors = ["Humberto de la Cruz"]
 
 [dependencies]
 raylib = "5.0"
 nalgebra = "0.32"
-rand = "0.8"

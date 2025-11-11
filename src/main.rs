@@ -1,14 +1,18 @@
 mod vector;
-mod matrix;
-mod camera;
+mod transform;        // Anteriormente "matrix" - refactorizado
+mod orbital_camera;   // Anteriormente "camera" - refactorizado
 mod sphere;
 mod shaders;
+mod planets;  // Módulo de planetas separados
+mod ui;  // Nuevo módulo de interfaz
 
 use raylib::prelude::*;
 use vector::Vector3;
-use camera::Camera;
+use orbital_camera::OrbitalCamera;
 use sphere::Mesh;
-use shaders::{PlanetShader, RockyPlanetShader, GasGiantShader, CrystalPlanetShader, LavaPlanetShader, SaturnShader, ShaderUniforms, ShaderColor};
+use shaders::{PlanetShader, ShaderUniforms, ShaderColor};
+use planets::{RockyPlanetShader, GasGiantShader, CrystalPlanetShader, LavaPlanetShader, SaturnShader};
+use ui::render_ui;  // Importar función de UI
 
 enum PlanetType {
     Rocky,
@@ -55,23 +59,23 @@ impl Planet {
 
 fn render_planet_software(
     planet: &Planet,
-    camera: &Camera,
+    camera: &OrbitalCamera,
     uniforms: &ShaderUniforms,
     rl: &mut RaylibDrawHandle,
     width: i32,
     height: i32,
 ) {
-    let view_matrix = camera.get_view_matrix();
-    let proj_matrix = matrix::create_projection_matrix(
+    let view_matrix = camera.get_transform_matrix();
+    let proj_matrix = transform::build_perspective_projection(
         45.0_f32.to_radians(),
         width as f32 / height as f32,
         0.1,
         100.0,
     );
-    let viewport_matrix = matrix::create_viewport_matrix(0.0, 0.0, width as f32, height as f32);
+    let viewport_matrix = transform::build_viewport_transform(0.0, 0.0, width as f32, height as f32);
     
     // Matriz de transformación del planeta (solo rotación)
-    let rotation_matrix = matrix::create_rotation_y(planet.rotation);
+    let rotation_matrix = transform::build_y_axis_rotation(planet.rotation);
     
     // Renderizar triángulos
     for i in (0..planet.mesh.indices.len()).step_by(3) {
@@ -88,13 +92,13 @@ fn render_planet_software(
         let v3 = &planet.mesh.vertices[i3];
         
         // Aplicar rotación
-        let pos1 = rotation_matrix.transform_vector(&v1.position);
-        let pos2 = rotation_matrix.transform_vector(&v2.position);
-        let pos3 = rotation_matrix.transform_vector(&v3.position);
+        let pos1 = rotation_matrix.apply_to_vector(&v1.position);
+        let pos2 = rotation_matrix.apply_to_vector(&v2.position);
+        let pos3 = rotation_matrix.apply_to_vector(&v3.position);
         
-        let norm1 = rotation_matrix.transform_vector(&v1.normal);
-        let norm2 = rotation_matrix.transform_vector(&v2.normal);
-        let norm3 = rotation_matrix.transform_vector(&v3.normal);
+        let norm1 = rotation_matrix.apply_to_vector(&v1.normal);
+        let norm2 = rotation_matrix.apply_to_vector(&v2.normal);
+        let norm3 = rotation_matrix.apply_to_vector(&v3.normal);
         
         // Aplicar VERTEX SHADER para deformación procedural
         let (pos1, norm1) = planet.shader.vertex_shader(pos1, norm1, v1.uv, uniforms);
@@ -102,9 +106,9 @@ fn render_planet_software(
         let (pos3, norm3) = planet.shader.vertex_shader(pos3, norm3, v3.uv, uniforms);
         
         // Transformar a espacio de pantalla
-        let screen1 = viewport_matrix.transform_vector(&proj_matrix.transform_vector(&view_matrix.transform_vector(&pos1)));
-        let screen2 = viewport_matrix.transform_vector(&proj_matrix.transform_vector(&view_matrix.transform_vector(&pos2)));
-        let screen3 = viewport_matrix.transform_vector(&proj_matrix.transform_vector(&view_matrix.transform_vector(&pos3)));
+        let screen1 = viewport_matrix.apply_to_vector(&proj_matrix.apply_to_vector(&view_matrix.apply_to_vector(&pos1)));
+        let screen2 = viewport_matrix.apply_to_vector(&proj_matrix.apply_to_vector(&view_matrix.apply_to_vector(&pos2)));
+        let screen3 = viewport_matrix.apply_to_vector(&proj_matrix.apply_to_vector(&view_matrix.apply_to_vector(&pos3)));
         
         // Calcular colores usando fragment shader
         let color1 = planet.shader.fragment_shader(pos1, norm1, v1.uv, uniforms);
@@ -217,7 +221,7 @@ fn main() {
         .title("Laboratorio No. 4 - Shaders")
         .build();
 
-    let mut camera = Camera::new();
+    let mut camera = OrbitalCamera::new();
     let mut planets = vec![
         Planet::new(PlanetType::Rocky),
         Planet::new(PlanetType::GasGiant),
@@ -236,7 +240,7 @@ fn main() {
         time += dt;
         
         // Actualizar cámara
-        camera.update(&rl);
+        camera.process_input(&rl);
         
         // Cambiar planeta con teclas
         if rl.is_key_pressed(KeyboardKey::KEY_ONE) {
@@ -258,7 +262,7 @@ fn main() {
         let uniforms = ShaderUniforms {
             time,
             light_direction: Vector3::new(1.0, 1.0, 1.0).normalize(),
-            camera_position: camera.eye,
+            camera_position: camera.position,
         };
         
         let mut d = rl.begin_drawing(&thread);
@@ -276,21 +280,8 @@ fn main() {
             768,
         );
         
-        // UI
-        d.draw_text("Controles:", 10, 40, 16, raylib::prelude::Color::WHITE);
-        d.draw_text("1 - Planeta Rocoso", 10, 60, 14, raylib::prelude::Color::WHITE);
-        d.draw_text("2 - Gigante Gaseoso", 10, 80, 14, raylib::prelude::Color::WHITE);
-        d.draw_text("3 - Planeta de Ficción", 10, 100, 14, raylib::prelude::Color::WHITE);
-        d.draw_text("4 - Planeta Nebulosa", 10, 120, 14, raylib::prelude::Color::WHITE);
-        d.draw_text("5 - Planeta Metalico", 10, 140, 14, raylib::prelude::Color::WHITE);
-        d.draw_text("Puedes hacer zoom y mover la cámara con el mouse o touchpad", 10, 160, 14, raylib::prelude::Color::WHITE);
-        let planet_names = ["Planeta Rocoso", "Gigante Gaseoso", "Planeta Sci-Fi", "Planeta Nebulosa", "Planeta Metalico"];
-        d.draw_text(
-            &format!("Planeta actual: {}", planet_names[current_planet]),
-            10,
-            200,
-            16,
-            raylib::prelude::Color::PURPLE,
-        );
+        // Renderizar UI mejorada
+        let current_fps = d.get_fps() as i32;
+        render_ui(&mut d, current_planet, current_fps);
     }
 }
