@@ -146,20 +146,27 @@ cargo run --release
 ```
 Lab4-Static-Shaders/
 ├── src/
-│   ├── main.rs           # Loop principal y fondo espacial
-│   ├── shaders.rs        # 4 shaders de planetas
-│   ├── camera.rs         # Cámara orbital
-│   ├── sphere.rs         # Cargador de modelos OBJ
-│   ├── sphere.obj        # Esfera (1890 vértices, 960 triángulos)
-│   ├── vector.rs         # Vector3D
-│   ├── matrix.rs         # Matrices de transformación
-│   ├── vertex.rs         # Estructura de vértice
-│   ├── fragment.rs       # Procesamiento de fragmentos
-│   ├── framebuffer.rs    # Buffer de píxeles
-│   ├── triangle.rs       # Rasterización
-│   └── render.rs         # Pipeline de renderizado
-├── Cargo.toml            # Dependencias
-└── README.md             # Documentación
+│   ├── main.rs              # Loop principal y fondo espacial
+│   ├── shaders.rs           # Base de shaders y funciones de ruido
+│   ├── planets/             # Shaders de planetas (5 módulos)
+│   │   ├── mod.rs           # Coordinador de módulos
+│   │   ├── rocky.rs         # Planeta rocoso con relieve
+│   │   ├── gas_giant.rs     # Gigante gaseoso (Júpiter)
+│   │   ├── crystal.rs       # Planeta sci-fi tecnológico
+│   │   ├── nebula.rs        # Nebulosa cósmica
+│   │   └── metallic.rs      # Planeta metálico con picos
+│   ├── orbital_camera.rs    # Cámara orbital interactiva
+│   ├── transform.rs         # Matrices de transformación 4x4
+│   ├── sphere.rs            # Cargador de modelos OBJ
+│   ├── sphere.obj           # Esfera (1890 vértices, 960 triángulos)
+│   ├── vector.rs            # Vector3D
+│   ├── vertex.rs            # Estructura de vértice
+│   ├── fragment.rs          # Procesamiento de fragmentos
+│   ├── framebuffer.rs       # Buffer de píxeles
+│   ├── triangle.rs          # Rasterización
+│   └── render.rs            # Pipeline de renderizado
+├── Cargo.toml               # Dependencias
+└── README.md                # Documentación
 ```
 
 ### Pipeline de Renderizado
